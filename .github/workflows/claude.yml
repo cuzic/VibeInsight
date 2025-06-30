@@ -1,0 +1,62 @@
+name: Claude Code アシスタント
+on:
+    issue_comment:
+        types: [created, edited]
+    pull_request_review_comment:
+        types: [created, edited]
+    issues:
+        types: [opened, assigned, edited, labeled]
+    pull_request_review:
+        types: [submitted]
+    pull_request:
+        types: [opened, synchronize, ready_for_review]
+
+jobs:
+    claude:
+        if: |
+            (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+            (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+            (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+            (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude') || contains(github.event.issue.labels.*.name, 'claude'))) ||
+            (github.event_name == 'pull_request' && (contains(github.event.pull_request.body, '@claude') || contains(github.event.pull_request.title, '@claude') || contains(github.event.pull_request.labels.*.name, 'claude')))
+
+        runs-on: self-hosted
+
+        permissions:
+            contents: write
+            pull-requests: write
+            issues: write
+            id-token: write
+            actions: write
+
+        concurrency:
+            group: claude-${{ github.event.number || github.run_id }}
+            cancel-in-progress: true
+
+        steps:
+            - name: リポジトリをチェックアウト
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Claude Code を実行
+              id: claude
+              uses: cuzic/claude-code-action@main
+              with:
+                  use_oauth: 'true'
+                  claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+                  claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+                  claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+                  timeout_minutes: 30
+                  max_tokens: 8192
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+                  
+            - name: 実行結果を出力
+              if: always()
+              run: |
+                  echo "Claude Code 実行完了"
+                  echo "実行時間: ${{ steps.claude.outputs.execution_time || '不明' }}"
+                  echo "トークン使用量: ${{ steps.claude.outputs.tokens_used || '不明' }}"
+
