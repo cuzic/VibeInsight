@@ -1,0 +1,21 @@
+# Ignore artifacts:
+build
+coverage
+dist
+node_modules
+bun.lockb
+package-lock.json
+
+# Ignore all HTML files:
+*.html
+
+# Ignore files:
+.DS_Store
+.env
+.env.*
+*.log
+
+# Ignore specific directories:
+.vite
+.vitest
+supabase/.temp
